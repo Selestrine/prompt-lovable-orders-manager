@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { mockDataService } from "@/services/mockData";
 import { Brand, Product } from "@/types";
@@ -135,12 +134,32 @@ export default function Products() {
   };
   
   const handleExportTemplate = () => {
-    // Create CSV content
-    const headers = "código,modelo,id_marca\n";
-    const csv = headers + "PROD001,Modelo Exemplo,ID_MARCA\n";
+    // Create headers
+    const headers = ["Código", "Modelo", "ID Marca"];
+    
+    // Get all brands for reference
+    const brandsLookup: Record<string, string> = {};
+    brands.forEach(brand => {
+      brandsLookup[brand.id] = brand.name;
+    });
+    
+    // Create rows with existing products data
+    const rows = products.map(product => [
+      product.code,
+      product.model,
+      product.brandId
+    ]);
+    
+    // Create CSV content with tab separation for better spreadsheet import
+    let csvContent = headers.join("\t") + "\n";
+    
+    // Add existing products
+    rows.forEach(row => {
+      csvContent += row.join("\t") + "\n";
+    });
     
     // Create a blob and download it
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     

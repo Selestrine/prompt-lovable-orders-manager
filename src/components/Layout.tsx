@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { Outlet, NavLink } from "react-router-dom";
-import { BarChart, Package, Tag, FileText, ShoppingBag, Globe } from "lucide-react";
+import { BarChart, Package, Tag, ShoppingBag, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const Layout = () => {
@@ -57,7 +57,6 @@ const Layout = () => {
               <NavItem to="/brands" icon={<Tag size={20} />} label="Marcas" />
               <NavItem to="/products" icon={<Package size={20} />} label="Produtos" />
               <NavItem to="/requests" icon={<ShoppingBag size={20} />} label="Solicitações" />
-              <NavItem to="/reports" icon={<FileText size={20} />} label="Relatórios" />
               <NavItem to="/api-endpoint" icon={<Globe size={20} />} label="API/Webhook" />
             </ul>
           </nav>

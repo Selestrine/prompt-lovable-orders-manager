@@ -13,7 +13,6 @@ import Products from "./pages/Products";
 import Requests from "./pages/Requests";
 import NotFound from "./pages/NotFound";
 import ApiEndpoint from "./pages/ApiEndpoint";
-import Reports from "./pages/Reports";
 
 const queryClient = new QueryClient();
 
@@ -30,7 +29,6 @@ const App = () => (
             <Route path="brands/:id" element={<BrandDetail />} />
             <Route path="products" element={<Products />} />
             <Route path="requests" element={<Requests />} />
-            <Route path="reports" element={<Reports />} />
             <Route path="api-endpoint" element={<ApiEndpoint />} />
             <Route path="*" element={<NotFound />} />
           </Route>
