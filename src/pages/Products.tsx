@@ -134,28 +134,19 @@ export default function Products() {
   };
   
   const handleExportTemplate = () => {
-    // Create headers
-    const headers = ["Código", "Modelo", "ID Marca"];
-    
-    // Get all brands for reference
-    const brandsLookup: Record<string, string> = {};
-    brands.forEach(brand => {
-      brandsLookup[brand.id] = brand.name;
-    });
-    
     // Create rows with existing products data
-    const rows = products.map(product => [
-      product.code,
-      product.model,
-      product.brandId
-    ]);
+    const rows = products.map(product => ({
+      code: product.code,
+      model: product.model,
+      brandId: product.brandId
+    }));
     
-    // Create CSV content with tab separation for better spreadsheet import
-    let csvContent = headers.join("\t") + "\n";
+    // Create CSV content with proper column separation
+    let csvContent = "Código\tModelo\tID Marca\n";
     
     // Add existing products
     rows.forEach(row => {
-      csvContent += row.join("\t") + "\n";
+      csvContent += `${row.code}\t${row.model}\t${row.brandId}\n`;
     });
     
     // Create a blob and download it
