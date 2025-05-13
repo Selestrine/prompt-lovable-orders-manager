@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { mockDataService } from "@/services/mockData";
 import { PurchaseRequest, RequestStatus, Brand } from "@/types";
@@ -30,7 +31,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { FileText, Download } from "lucide-react";
+import { FileText, Download, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
