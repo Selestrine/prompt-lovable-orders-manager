@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import {
   Card,
@@ -22,8 +23,16 @@ import { Input } from "@/components/ui/input";
 import { Check, FileText, Download } from "lucide-react";
 import { toast } from "sonner";
 import { mockDataService } from "@/services/mockData";
+// Import jsPDF with the correct type
 import jsPDF from "jspdf";
+// Add a declaration for jsPDF-autotable
 import "jspdf-autotable";
+// Add a module declaration for jspdf-autotable
+declare module "jspdf" {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
 
 export default function Reports() {
   const [reportType, setReportType] = useState<string>("");

@@ -32,8 +32,16 @@ import {
 } from "@/components/ui/tabs";
 import { FileText, Download, Pencil } from "lucide-react";
 import { toast } from "sonner";
+// Import jsPDF with the correct type
 import jsPDF from "jspdf";
+// Add a declaration for jsPDF-autotable
 import "jspdf-autotable";
+// Add a module declaration for jspdf-autotable
+declare module "jspdf" {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
 
 export default function Requests() {
   const [requests, setRequests] = useState<PurchaseRequest[]>([]);
