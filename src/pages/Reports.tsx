@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import {
   Card,
@@ -359,4 +358,3 @@ function ReportCard({ title, description, onClick }: ReportCardProps) {
     </div>
   );
 }
-
