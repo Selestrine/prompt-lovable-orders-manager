@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { mockDataService } from "@/services/mockData";
 import { PurchaseRequest, RequestStatus, Brand } from "@/types";
@@ -32,12 +33,12 @@ import {
 } from "@/components/ui/tabs";
 import { FileText, Download, Pencil } from "lucide-react";
 import { toast } from "sonner";
-// Import jsPDF with the correct type
+// Import jsPDF directly
 import jsPDF from "jspdf";
-// Add a declaration for jsPDF-autotable
-import "jspdf-autotable";
-// Add a module declaration for jspdf-autotable
-declare module "jspdf" {
+// Import jspdf-autotable
+import 'jspdf-autotable';
+// Add global type augmentation for jsPDF
+declare global {
   interface jsPDF {
     autoTable: (options: any) => jsPDF;
   }
