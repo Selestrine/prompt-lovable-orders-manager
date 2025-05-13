@@ -33,16 +33,9 @@ import {
 } from "@/components/ui/tabs";
 import { FileText, Download, Pencil } from "lucide-react";
 import { toast } from "sonner";
-// Import jsPDF directly
 import jsPDF from "jspdf";
-// Import jspdf-autotable
-import 'jspdf-autotable';
-// Add global type augmentation for jsPDF
-declare global {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
+// Importar a biblioteca jspdf-autotable como um módulo ES
+import autoTable from 'jspdf-autotable';
 
 export default function Requests() {
   const [requests, setRequests] = useState<PurchaseRequest[]>([]);
@@ -58,6 +51,7 @@ export default function Requests() {
   const [supplier, setSupplier] = useState("");
   const [quantity, setQuantity] = useState("");
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState("");
+  const [purchaseDate, setPurchaseDate] = useState("");
   const [alternativeProduct, setAlternativeProduct] = useState("");
   const [cancellationReason, setCancellationReason] = useState("");
   
@@ -95,6 +89,8 @@ export default function Requests() {
     setQuantity(request.quantity?.toString() || "");
     setExpectedDeliveryDate(request.expectedDeliveryDate ? 
       formatDateForInput(request.expectedDeliveryDate) : "");
+    setPurchaseDate(request.purchaseDate ? 
+      formatDateForInput(request.purchaseDate) : formatDateForInput(new Date()));
     setAlternativeProduct(request.alternativeProduct || "");
     setCancellationReason(request.cancellationReason || "");
     setIsDialogOpen(true);
@@ -128,6 +124,7 @@ export default function Requests() {
       updateData.quantity = parseInt(quantity);
       updateData.expectedDeliveryDate = new Date(expectedDeliveryDate);
       updateData.alternativeProduct = alternativeProduct || undefined;
+      updateData.purchaseDate = new Date(purchaseDate || new Date());
     } else if (status === 'canceled') {
       updateData.cancellationReason = cancellationReason;
     }
@@ -150,60 +147,65 @@ export default function Requests() {
   
   // Function to generate PDF of filtered requests
   const generatePDF = () => {
-    const doc = new jsPDF();
-    
-    // Add title
-    doc.setFontSize(18);
-    doc.text("Relatório de Solicitações", 14, 22);
-    
-    // Add filters info
-    doc.setFontSize(12);
-    const statusText = activeTab === 'all' ? 'Todos' : getStatusLabel(activeTab as RequestStatus);
-    const brandText = selectedBrand === 'all' ? 'Todas' : 
-      brands.find(b => b.id === selectedBrand)?.name || 'Desconhecida';
-    
-    doc.text(`Status: ${statusText}`, 14, 32);
-    doc.text(`Marca: ${brandText}`, 14, 38);
-    doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 14, 44);
-    
-    // Create the table data
-    const tableColumn = ["Produto", "Marca", "Status", "Data Solicitação", "Fornecedor", "Previsão"];
-    const tableRows: string[][] = [];
-    
-    filteredRequests.forEach(request => {
-      const rowData = [
-        request.product?.model || '',
-        request.product?.brand?.name || '',
-        getStatusLabel(request.status),
-        request.requestDate.toLocaleDateString('pt-BR'),
-        request.supplier || '-',
-        request.expectedDeliveryDate ? 
-          request.expectedDeliveryDate.toLocaleDateString('pt-BR') : '-'
-      ];
-      tableRows.push(rowData);
-    });
-    
-    // @ts-ignore - jspdf-autotable adds this method to jsPDF
-    doc.autoTable({
-      head: [tableColumn],
-      body: tableRows,
-      startY: 50,
-      theme: 'grid',
-      styles: {
-        fontSize: 10,
-        cellPadding: 3,
-        overflow: 'linebreak',
-      },
-      headStyles: {
-        fillColor: [100, 100, 100],
-        textColor: [255, 255, 255]
-      }
-    });
-    
-    const fileName = `solicitacoes_${statusText.toLowerCase()}_${brandText.toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(fileName);
-    
-    toast.success("Relatório PDF gerado com sucesso!");
+    try {
+      // Create new jsPDF instance
+      const doc = new jsPDF();
+      
+      // Add title
+      doc.setFontSize(18);
+      doc.text("Relatório de Solicitações", 14, 22);
+      
+      // Add filters info
+      doc.setFontSize(12);
+      const statusText = activeTab === 'all' ? 'Todos' : getStatusLabel(activeTab as RequestStatus);
+      const brandText = selectedBrand === 'all' ? 'Todas' : 
+        brands.find(b => b.id === selectedBrand)?.name || 'Desconhecida';
+      
+      doc.text(`Status: ${statusText}`, 14, 32);
+      doc.text(`Marca: ${brandText}`, 14, 38);
+      doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 14, 44);
+      
+      // Create the table data
+      const tableColumn = ["Produto", "Marca", "Status", "Data Solicitação", "Fornecedor", "Previsão"];
+      const tableRows: string[][] = [];
+      
+      filteredRequests.forEach(request => {
+        const rowData = [
+          request.product?.model || '',
+          request.product?.brand?.name || '',
+          getStatusLabel(request.status),
+          request.requestDate.toLocaleDateString('pt-BR'),
+          request.supplier || '-',
+          request.expectedDeliveryDate ? 
+            request.expectedDeliveryDate.toLocaleDateString('pt-BR') : '-'
+        ];
+        tableRows.push(rowData);
+      });
+      
+      // Usar a biblioteca autoTable
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 50,
+        theme: 'grid',
+        styles: {
+          fontSize: 10,
+          cellPadding: 3,
+        },
+        headStyles: {
+          fillColor: [100, 100, 100],
+          textColor: [255, 255, 255]
+        }
+      });
+      
+      const fileName = `solicitacoes_${statusText.toLowerCase()}_${brandText.toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+      
+      toast.success("Relatório PDF gerado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+      toast.error("Erro ao gerar o PDF. Verifique o console para mais detalhes.");
+    }
   };
   
   return (
@@ -299,6 +301,18 @@ export default function Requests() {
             {/* Conditional fields based on status */}
             {status === 'purchased' && (
               <>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="purchaseDate" className="text-right">
+                    Data da Compra
+                  </Label>
+                  <Input
+                    id="purchaseDate"
+                    type="date"
+                    value={purchaseDate}
+                    onChange={(e) => setPurchaseDate(e.target.value)}
+                    className="col-span-3"
+                  />
+                </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="supplier" className="text-right">
                     Fornecedor
@@ -404,6 +418,13 @@ function RequestCard({ request, onEdit }: RequestCardProps) {
           <span className="font-medium">Data da solicitação:</span>{" "}
           {request.requestDate.toLocaleDateString('pt-BR')}
         </div>
+        
+        {request.purchaseDate && (
+          <div>
+            <span className="font-medium">Data da compra:</span>{" "}
+            {request.purchaseDate.toLocaleDateString('pt-BR')}
+          </div>
+        )}
         
         {request.supplier && (
           <div>

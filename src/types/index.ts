@@ -24,6 +24,7 @@ export type PurchaseRequest = {
   status: RequestStatus;
   
   // Fields for purchased status
+  purchaseDate?: Date;      // Nova data de compra
   expectedDeliveryDate?: Date;
   supplier?: string;
   quantity?: number;
