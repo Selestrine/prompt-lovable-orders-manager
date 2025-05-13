@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { mockDataService } from "@/services/mockData";
-import { PurchaseRequest, RequestStatus } from "@/types";
+import { PurchaseRequest, RequestStatus, Brand } from "@/types";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PageHeader } from "@/components/PageHeader";
@@ -31,13 +30,17 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { Pencil } from "lucide-react";
+import { FileText, Download } from "lucide-react";
 import { toast } from "sonner";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 export default function Requests() {
   const [requests, setRequests] = useState<PurchaseRequest[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<RequestStatus | 'all'>('all');
+  const [selectedBrand, setSelectedBrand] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentRequest, setCurrentRequest] = useState<PurchaseRequest | null>(null);
   
@@ -51,6 +54,7 @@ export default function Requests() {
   
   useEffect(() => {
     fetchRequests();
+    fetchBrands();
   }, []);
   
   const fetchRequests = async () => {
@@ -63,6 +67,15 @@ export default function Requests() {
       toast.error("Erro ao carregar as solicitações");
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const fetchBrands = async () => {
+    try {
+      const data = await mockDataService.getBrands();
+      setBrands(data);
+    } catch (error) {
+      console.error("Error fetching brands:", error);
     }
   };
   
@@ -121,17 +134,95 @@ export default function Requests() {
     }
   };
   
-  // Filter requests based on active tab
-  const filteredRequests = activeTab === 'all'
-    ? requests
-    : requests.filter(req => req.status === activeTab);
+  // Filter requests based on active tab and selected brand
+  const filteredRequests = requests
+    .filter(req => activeTab === 'all' || req.status === activeTab)
+    .filter(req => selectedBrand === "all" || req.product?.brandId === selectedBrand);
+  
+  // Function to generate PDF of filtered requests
+  const generatePDF = () => {
+    const doc = new jsPDF();
+    
+    // Add title
+    doc.setFontSize(18);
+    doc.text("Relatório de Solicitações", 14, 22);
+    
+    // Add filters info
+    doc.setFontSize(12);
+    const statusText = activeTab === 'all' ? 'Todos' : getStatusLabel(activeTab as RequestStatus);
+    const brandText = selectedBrand === 'all' ? 'Todas' : 
+      brands.find(b => b.id === selectedBrand)?.name || 'Desconhecida';
+    
+    doc.text(`Status: ${statusText}`, 14, 32);
+    doc.text(`Marca: ${brandText}`, 14, 38);
+    doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 14, 44);
+    
+    // Create the table data
+    const tableColumn = ["Produto", "Marca", "Status", "Data Solicitação", "Fornecedor", "Previsão"];
+    const tableRows: string[][] = [];
+    
+    filteredRequests.forEach(request => {
+      const rowData = [
+        request.product?.model || '',
+        request.product?.brand?.name || '',
+        getStatusLabel(request.status),
+        request.requestDate.toLocaleDateString('pt-BR'),
+        request.supplier || '-',
+        request.expectedDeliveryDate ? 
+          request.expectedDeliveryDate.toLocaleDateString('pt-BR') : '-'
+      ];
+      tableRows.push(rowData);
+    });
+    
+    // @ts-ignore - jspdf-autotable adds this method to jsPDF
+    doc.autoTable({
+      head: [tableColumn],
+      body: tableRows,
+      startY: 50,
+      theme: 'grid',
+      styles: {
+        fontSize: 10,
+        cellPadding: 3,
+        overflow: 'linebreak',
+      },
+      headStyles: {
+        fillColor: [100, 100, 100],
+        textColor: [255, 255, 255]
+      }
+    });
+    
+    const fileName = `solicitacoes_${statusText.toLowerCase()}_${brandText.toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(fileName);
+    
+    toast.success("Relatório PDF gerado com sucesso!");
+  };
   
   return (
     <div>
       <PageHeader 
         title="Solicitações de Compra" 
         description="Gerencie as solicitações de compra de produtos"
+        actionLabel="Exportar PDF" 
+        onAction={generatePDF}
       />
+      
+      <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center">
+        <Select value={selectedBrand} onValueChange={setSelectedBrand}>
+          <SelectTrigger className="w-full sm:w-[200px]">
+            <SelectValue placeholder="Filtrar por marca" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as marcas</SelectItem>
+            {brands.map(brand => (
+              <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        
+        <Button variant="outline" className="w-full sm:w-auto" onClick={generatePDF}>
+          <Download size={16} className="mr-2" /> Exportar Solicitações (PDF)
+        </Button>
+      </div>
       
       <Tabs defaultValue="all" onValueChange={(value) => setActiveTab(value as RequestStatus | 'all')}>
         <TabsList className="mb-6">

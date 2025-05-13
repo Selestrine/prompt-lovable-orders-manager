@@ -20,23 +20,164 @@ import {
 import { PageHeader } from "@/components/PageHeader";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Check, FileText } from "lucide-react";
+import { Check, FileText, Download } from "lucide-react";
 import { toast } from "sonner";
+import { mockDataService } from "@/services/mockData";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 export default function Reports() {
   const [reportType, setReportType] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [brandId, setBrandId] = useState<string>("");
+  const [loading, setLoading] = useState(false);
   
-  const handleGenerateReport = () => {
+  const generateReportPDF = async () => {
     if (!reportType) {
       toast.error("Selecione um tipo de relatório");
       return;
     }
     
-    // In a real application, we would generate a PDF here
-    toast.success("Relatório gerado com sucesso");
+    try {
+      setLoading(true);
+      
+      // Obter os dados para o relatório
+      let requests = await mockDataService.getPurchaseRequests();
+      let brands = await mockDataService.getBrands();
+      let reportTitle = "";
+      
+      // Filtrar os dados com base no tipo de relatório
+      switch(reportType) {
+        case "pending":
+          requests = requests.filter(req => req.status === "pending");
+          reportTitle = "Solicitações Pendentes";
+          break;
+        case "purchased":
+          requests = requests.filter(req => req.status === "purchased");
+          reportTitle = "Produtos Comprados";
+          break;
+        case "received":
+          requests = requests.filter(req => req.status === "received");
+          reportTitle = "Itens Recebidos";
+          break;
+        case "canceled":
+          requests = requests.filter(req => req.status === "canceled");
+          reportTitle = "Solicitações Canceladas";
+          break;
+        case "by-brand":
+          if (brandId) {
+            requests = requests.filter(req => req.product?.brandId === brandId);
+            const brand = brands.find(b => b.id === brandId);
+            reportTitle = `Solicitações por Marca: ${brand?.name || 'Desconhecida'}`;
+          } else {
+            toast.error("Selecione uma marca");
+            setLoading(false);
+            return;
+          }
+          break;
+        case "delivery-period":
+          if (!startDate || !endDate) {
+            toast.error("Informe o período de entrega");
+            setLoading(false);
+            return;
+          }
+          reportTitle = `Entregas entre ${new Date(startDate).toLocaleDateString('pt-BR')} e ${new Date(endDate).toLocaleDateString('pt-BR')}`;
+          requests = requests.filter(req => {
+            if (!req.expectedDeliveryDate) return false;
+            const deliveryDate = req.expectedDeliveryDate;
+            return deliveryDate >= new Date(startDate) && deliveryDate <= new Date(endDate);
+          });
+          break;
+        case "request-period":
+          if (!startDate || !endDate) {
+            toast.error("Informe o período de solicitação");
+            setLoading(false);
+            return;
+          }
+          reportTitle = `Solicitações entre ${new Date(startDate).toLocaleDateString('pt-BR')} e ${new Date(endDate).toLocaleDateString('pt-BR')}`;
+          requests = requests.filter(req => {
+            const requestDate = req.requestDate;
+            return requestDate >= new Date(startDate) && requestDate <= new Date(endDate);
+          });
+          break;
+      }
+      
+      // Criar o PDF
+      const doc = new jsPDF();
+      
+      // Adicionar cabeçalho
+      doc.setFontSize(18);
+      doc.text(reportTitle, 14, 22);
+      
+      // Adicionar data do relatório
+      doc.setFontSize(12);
+      doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 30);
+      doc.text(`Total de itens: ${requests.length}`, 14, 38);
+      
+      // Criar a estrutura da tabela
+      const tableColumn = ["Produto", "Marca", "Status", "Data Solicitação", "Fornecedor", "Previsão"];
+      const tableRows: string[][] = [];
+      
+      // Adicionar dados à tabela
+      requests.forEach(request => {
+        const status = {
+          pending: "Pendente",
+          purchased: "Comprado",
+          received: "Recebido",
+          canceled: "Cancelado"
+        }[request.status];
+        
+        const rowData = [
+          request.product?.model || '-',
+          request.product?.brand?.name || '-',
+          status,
+          request.requestDate.toLocaleDateString('pt-BR'),
+          request.supplier || '-',
+          request.expectedDeliveryDate ? 
+            request.expectedDeliveryDate.toLocaleDateString('pt-BR') : '-'
+        ];
+        tableRows.push(rowData);
+      });
+      
+      // @ts-ignore - jspdf-autotable adds this method to jsPDF
+      doc.autoTable({
+        head: [tableColumn],
+        body: tableRows,
+        startY: 45,
+        theme: 'grid',
+        styles: {
+          fontSize: 10,
+          cellPadding: 3,
+          overflow: 'linebreak',
+        },
+        headStyles: {
+          fillColor: [100, 100, 100],
+          textColor: [255, 255, 255]
+        }
+      });
+      
+      // Se o relatório estiver vazio, mostrar mensagem
+      if (requests.length === 0) {
+        doc.text("Nenhum item encontrado para os filtros selecionados.", 14, 50);
+      }
+      
+      // Salvar o PDF
+      const fileName = `relatorio_${reportType}_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+      
+      toast.success("Relatório gerado com sucesso!");
+      
+    } catch (error) {
+      console.error("Error generating report:", error);
+      toast.error("Erro ao gerar relatório");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleGenerateReport = () => {
+    generateReportPDF();
   };
   
   return (
@@ -120,8 +261,13 @@ export default function Reports() {
             )}
           </CardContent>
           <CardFooter>
-            <Button onClick={handleGenerateReport} className="w-full">
-              Gerar Relatório
+            <Button 
+              onClick={handleGenerateReport} 
+              className="w-full"
+              disabled={loading}
+            >
+              {loading ? "Gerando..." : "Gerar Relatório"}
+              {!loading && <Download size={16} className="ml-2" />}
             </Button>
           </CardFooter>
         </Card>
@@ -140,7 +286,7 @@ export default function Reports() {
                 description="Lista todas as solicitações pendentes de compra"
                 onClick={() => {
                   setReportType("pending");
-                  toast.success("Relatório de Solicitações Pendentes gerado com sucesso");
+                  generateReportPDF();
                 }}
               />
               
@@ -149,7 +295,7 @@ export default function Reports() {
                 description="Lista de produtos comprados nos últimos 30 dias"
                 onClick={() => {
                   setReportType("purchased");
-                  toast.success("Relatório de Compras Recentes gerado com sucesso");
+                  generateReportPDF();
                 }}
               />
               
@@ -158,7 +304,13 @@ export default function Reports() {
                 description="Lista de produtos com entrega prevista para os próximos 15 dias"
                 onClick={() => {
                   setReportType("delivery-period");
-                  toast.success("Relatório de Entregas Previstas gerado com sucesso");
+                  // Configurar datas para os próximos 15 dias
+                  const today = new Date();
+                  const futureDate = new Date();
+                  futureDate.setDate(today.getDate() + 15);
+                  setStartDate(today.toISOString().split('T')[0]);
+                  setEndDate(futureDate.toISOString().split('T')[0]);
+                  generateReportPDF();
                 }}
               />
               
@@ -167,7 +319,9 @@ export default function Reports() {
                 description="Resumo estatístico das solicitações agrupadas por marca"
                 onClick={() => {
                   setReportType("by-brand");
-                  toast.success("Relatório de Análise por Marca gerado com sucesso");
+                  // Usamos a primeira marca como padrão
+                  setBrandId("1");
+                  generateReportPDF();
                 }}
               />
             </div>
@@ -199,9 +353,10 @@ function ReportCard({ title, description, onClick }: ReportCardProps) {
       </div>
       <div>
         <Button variant="ghost" size="icon">
-          <Check size={18} className="text-gray-500" />
+          <Download size={18} className="text-gray-500" />
         </Button>
       </div>
     </div>
   );
 }
+

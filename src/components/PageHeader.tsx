@@ -16,10 +16,11 @@ export function PageHeader({ title, description, actionLabel, onAction }: PageHe
         {description && <p className="text-gray-600 mt-1">{description}</p>}
       </div>
       {actionLabel && onAction && (
-        <Button onClick={onAction}>
+        <Button onClick={onAction} className="flex items-center gap-2">
           {actionLabel}
         </Button>
       )}
     </div>
   );
 }
+

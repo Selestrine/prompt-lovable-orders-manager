@@ -1,5 +1,5 @@
 
-import { Package } from "lucide-react";
+import { Package, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface EmptyStateProps {
@@ -30,3 +30,4 @@ export function EmptyState({
     </div>
   );
 }
+
